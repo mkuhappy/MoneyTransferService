@@ -1,0 +1,3 @@
+This is a simple RESTful web-service that handles money transfers between accounts.
+
+More description to be added...

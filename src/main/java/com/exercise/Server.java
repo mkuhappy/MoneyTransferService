@@ -1,9 +1,12 @@
 package com.exercise;
 
+import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.LinkedList;
+import java.util.List;
 import java.util.concurrent.Executors;
 
 /**
@@ -11,26 +14,46 @@ import java.util.concurrent.Executors;
  */
 public class Server {
 
-    private static volatile boolean operable = false;
-    private static volatile boolean canBeStopped = false;
+    public static final String CONTEXT_URL = "/api/1.0/transfer";
 
-    public static void main( String[] args ) throws IOException {
-        final HttpServer server = HttpServer.create(new InetSocketAddress(8080),25);
+    private HttpServer server;
+    private TransferHandler handler;
+
+    /**
+     * Creates a new instance of server
+     * @param portNumber port to listen on
+     * @param maxRequests maximum number of requests in queue
+     * @throws IOException if cannot create a server with the specified port number
+     */
+    public Server(int portNumber, int maxRequests) throws IOException {
+        handler = TransferHandler.INSTANCE;
+
+        server = HttpServer.create(new InetSocketAddress(portNumber),maxRequests);
         server.setExecutor(Executors.newFixedThreadPool(5));
-        server.createContext("/api/1.0/transfer",TransferHandler.INSTANCE);
-        server.start();
+        server.createContext(CONTEXT_URL,handler);
+    }
 
-        Runtime.getRuntime().addShutdownHook(new Thread(){
-            @Override
-            public void run() {
-                operable = false;
-                while(!canBeStopped){
-                    try {
-                        Thread.sleep(500);
-                    }catch (InterruptedException ie){}
-                }
-                server.stop(5);
-            }
-        });
+    /**
+     * Starts the server
+     */
+    public void startServer(){
+        server.start();
+    }
+
+    /**
+     * Stops the server after the transfer handler is properly un-registered
+     */
+    public void terminate(){
+        unregisterHandler();
+        stopServer();
+    }
+
+    private void stopServer(){
+        server.stop(5);
+    }
+
+    private void unregisterHandler(){
+        server.removeContext(CONTEXT_URL);
+        // TODO: dispose transfer handler and wait for all operations completed
     }
 }
